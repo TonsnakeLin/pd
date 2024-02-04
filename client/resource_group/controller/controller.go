@@ -51,7 +51,7 @@ const (
 
 var LogAuditHook func(it interface{}, info string)
 var LogHookHanle interface{}
-var logAuditRunInterval = time.Minute * 5
+var logAuditRunInterval = time.Minute * 1
 
 // ResourceGroupKVInterceptor is used as quota limit controller for resource group using kv store.
 type ResourceGroupKVInterceptor interface {
@@ -548,7 +548,7 @@ func newGroupCostController(
 		tokenBucketUpdateChan: tokenBucketUpdateChan,
 		lowRUNotifyChan:       lowRUNotifyChan,
 		burstable:             &atomic.Bool{},
-		lastRun:               time.Now(),
+		lastRun:               time.Now().Add(-logAuditRunInterval),
 	}
 
 	switch gc.mode {
