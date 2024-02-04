@@ -344,9 +344,9 @@ func (suite *resourceManagerClientTestSuite) TestResourceGroupController() {
 				rres := cas.tcs[i].makeReadResponse()
 				wres := cas.tcs[i].makeWriteResponse()
 				startTime := time.Now()
-				_, _, _, _, err := controller.OnRequestWait(suite.ctx, cas.resourceGroupName, rreq)
+				_, _, err := controller.OnRequestWait(suite.ctx, cas.resourceGroupName, rreq)
 				re.NoError(err)
-				_, _, _, _, err = controller.OnRequestWait(suite.ctx, cas.resourceGroupName, wreq)
+				_, _, err = controller.OnRequestWait(suite.ctx, cas.resourceGroupName, wreq)
 				re.NoError(err)
 				sum += time.Since(startTime)
 				controller.OnResponse(cas.resourceGroupName, rreq, rres)
@@ -450,9 +450,9 @@ func (suite *resourceManagerClientTestSuite) TestSwitchBurst() {
 				rres := cas.tcs[i].makeReadResponse()
 				wres := cas.tcs[i].makeWriteResponse()
 				startTime := time.Now()
-				_, _, _, _, err := controller.OnRequestWait(suite.ctx, resourceGroupName, rreq)
+				_, _, err := controller.OnRequestWait(suite.ctx, resourceGroupName, rreq)
 				re.NoError(err)
-				_, _, _, _, err = controller.OnRequestWait(suite.ctx, resourceGroupName, wreq)
+				_, _, err = controller.OnRequestWait(suite.ctx, resourceGroupName, wreq)
 				re.NoError(err)
 				sum += time.Since(startTime)
 				controller.OnResponse(resourceGroupName, rreq, rres)
@@ -470,14 +470,14 @@ func (suite *resourceManagerClientTestSuite) TestSwitchBurst() {
 	resourceGroupName2 := suite.initGroups[2].Name
 	tcs = tokenConsumptionPerSecond{rruTokensAtATime: 1, wruTokensAtATime: 100000, times: 1, waitDuration: 0}
 	wreq := tcs.makeWriteRequest()
-	_, _, _, _, err := controller.OnRequestWait(suite.ctx, resourceGroupName2, wreq)
+	_, _, err := controller.OnRequestWait(suite.ctx, resourceGroupName2, wreq)
 	re.NoError(err)
 
 	re.NoError(failpoint.Enable("github.com/tikv/pd/client/resource_group/controller/acceleratedSpeedTrend", "return(true)"))
 	resourceGroupName3 := suite.initGroups[3].Name
 	tcs = tokenConsumptionPerSecond{rruTokensAtATime: 1, wruTokensAtATime: 1000, times: 1, waitDuration: 0}
 	wreq = tcs.makeWriteRequest()
-	_, _, _, _, err = controller.OnRequestWait(suite.ctx, resourceGroupName3, wreq)
+	_, _, err = controller.OnRequestWait(suite.ctx, resourceGroupName3, wreq)
 	re.NoError(err)
 	time.Sleep(110 * time.Millisecond)
 	tcs = tokenConsumptionPerSecond{rruTokensAtATime: 1, wruTokensAtATime: 10, times: 1010, waitDuration: 0}
@@ -485,7 +485,7 @@ func (suite *resourceManagerClientTestSuite) TestSwitchBurst() {
 	for i := 0; i < tcs.times; i++ {
 		wreq = tcs.makeWriteRequest()
 		startTime := time.Now()
-		_, _, _, _, err = controller.OnRequestWait(suite.ctx, resourceGroupName3, wreq)
+		_, _, err = controller.OnRequestWait(suite.ctx, resourceGroupName3, wreq)
 		duration += time.Since(startTime)
 		re.NoError(err)
 	}
@@ -519,7 +519,7 @@ func (suite *resourceManagerClientTestSuite) TestResourcePenalty() {
 	// init
 	req := controller.NewTestRequestInfo(false, 0, 2 /* store2 */)
 	resp := controller.NewTestResponseInfo(0, time.Duration(30), true)
-	_, penalty, _, _, err := c.OnRequestWait(suite.ctx, resourceGroupName, req)
+	_, penalty, err := c.OnRequestWait(suite.ctx, resourceGroupName, req)
 	re.NoError(err)
 	re.Equal(penalty.WriteBytes, float64(0))
 	re.Equal(penalty.TotalCpuTimeMs, 0.0)
@@ -528,7 +528,7 @@ func (suite *resourceManagerClientTestSuite) TestResourcePenalty() {
 
 	req = controller.NewTestRequestInfo(true, 60, 1 /* store1 */)
 	resp = controller.NewTestResponseInfo(0, time.Duration(10), true)
-	_, penalty, _, _, err = c.OnRequestWait(suite.ctx, resourceGroupName, req)
+	_, penalty, err = c.OnRequestWait(suite.ctx, resourceGroupName, req)
 	re.NoError(err)
 	re.Equal(penalty.WriteBytes, float64(0))
 	re.Equal(penalty.TotalCpuTimeMs, 0.0)
@@ -538,7 +538,7 @@ func (suite *resourceManagerClientTestSuite) TestResourcePenalty() {
 	// failed request, shouldn't be counted in penalty
 	req = controller.NewTestRequestInfo(true, 20, 1 /* store1 */)
 	resp = controller.NewTestResponseInfo(0, time.Duration(0), false)
-	_, penalty, _, _, err = c.OnRequestWait(suite.ctx, resourceGroupName, req)
+	_, penalty, err = c.OnRequestWait(suite.ctx, resourceGroupName, req)
 	re.NoError(err)
 	re.Equal(penalty.WriteBytes, float64(0))
 	re.Equal(penalty.TotalCpuTimeMs, 0.0)
@@ -548,7 +548,7 @@ func (suite *resourceManagerClientTestSuite) TestResourcePenalty() {
 	// from same store, should be zero
 	req1 := controller.NewTestRequestInfo(false, 0, 1 /* store1 */)
 	resp1 := controller.NewTestResponseInfo(0, time.Duration(10), true)
-	_, penalty, _, _, err = c.OnRequestWait(suite.ctx, resourceGroupName, req1)
+	_, penalty, err = c.OnRequestWait(suite.ctx, resourceGroupName, req1)
 	re.NoError(err)
 	re.Equal(penalty.WriteBytes, float64(0))
 	_, err = c.OnResponse(resourceGroupName, req1, resp1)
@@ -557,7 +557,7 @@ func (suite *resourceManagerClientTestSuite) TestResourcePenalty() {
 	// from different store, should be non-zero
 	req2 := controller.NewTestRequestInfo(true, 50, 2 /* store2 */)
 	resp2 := controller.NewTestResponseInfo(0, time.Duration(10), true)
-	_, penalty, _, _, err = c.OnRequestWait(suite.ctx, resourceGroupName, req2)
+	_, penalty, err = c.OnRequestWait(suite.ctx, resourceGroupName, req2)
 	re.NoError(err)
 	re.Equal(penalty.WriteBytes, float64(60))
 	re.InEpsilon(penalty.TotalCpuTimeMs, 10.0/1000.0/1000.0, 1e-6)
@@ -567,7 +567,7 @@ func (suite *resourceManagerClientTestSuite) TestResourcePenalty() {
 	// from new store, should be zero
 	req3 := controller.NewTestRequestInfo(true, 0, 3 /* store3 */)
 	resp3 := controller.NewTestResponseInfo(0, time.Duration(10), true)
-	_, penalty, _, _, err = c.OnRequestWait(suite.ctx, resourceGroupName, req3)
+	_, penalty, err = c.OnRequestWait(suite.ctx, resourceGroupName, req3)
 	re.NoError(err)
 	re.Equal(penalty.WriteBytes, float64(0))
 	_, err = c.OnResponse(resourceGroupName, req3, resp3)
@@ -577,7 +577,7 @@ func (suite *resourceManagerClientTestSuite) TestResourcePenalty() {
 	resourceGroupName = suite.initGroups[2].Name
 	req4 := controller.NewTestRequestInfo(true, 50, 1 /* store2 */)
 	resp4 := controller.NewTestResponseInfo(0, time.Duration(10), true)
-	_, penalty, _, _, err = c.OnRequestWait(suite.ctx, resourceGroupName, req4)
+	_, penalty, err = c.OnRequestWait(suite.ctx, resourceGroupName, req4)
 	re.NoError(err)
 	re.Equal(penalty.WriteBytes, float64(0))
 	_, err = c.OnResponse(resourceGroupName, req4, resp4)
