@@ -1006,11 +1006,8 @@ func (gc *groupCostController) calcRequest(counter *tokenCounter) float64 {
 }
 
 func (gc *groupCostController) logAuditLog(info string) {
-	deltaTime := time.Since(gc.lastRun)
-	if deltaTime > logAuditRunInterval {
-		LogAuditHook(LogHookHanle, info)
-		gc.lastRun = time.Now()
-	}
+	LogAuditHook(LogHookHanle, info)
+	gc.lastRun = time.Now()
 }
 
 func (gc *groupCostController) onRequestWait(
