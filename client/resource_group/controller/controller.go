@@ -1008,6 +1008,7 @@ func (gc *groupCostController) calcRequest(counter *tokenCounter) float64 {
 func (gc *groupCostController) logAuditLog(info string) {
 	if gc.lastRun.Add(*&logAuditRunInterval).After(time.Now()) {
 		LogAuditHook(LogHookHanle, info)
+		gc.lastRun = time.Now()
 	}
 }
 
