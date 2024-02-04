@@ -17,6 +17,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -47,6 +48,10 @@ const (
 	periodicReport selectType = 0
 	lowToken       selectType = 1
 )
+
+var LogAuditHook func(it interface{}, info string)
+var LogHookHanle interface{}
+var logAuditRunInterval = time.Minute * 5
 
 // ResourceGroupKVInterceptor is used as quota limit controller for resource group using kv store.
 type ResourceGroupKVInterceptor interface {
@@ -484,6 +489,8 @@ type groupCostController struct {
 	}
 
 	tombstone bool
+
+	lastRun time.Time
 }
 
 type tokenCounter struct {
@@ -541,6 +548,7 @@ func newGroupCostController(
 		tokenBucketUpdateChan: tokenBucketUpdateChan,
 		lowRUNotifyChan:       lowRUNotifyChan,
 		burstable:             &atomic.Bool{},
+		lastRun:               time.Now(),
 	}
 
 	switch gc.mode {
@@ -997,6 +1005,12 @@ func (gc *groupCostController) calcRequest(counter *tokenCounter) float64 {
 	return value
 }
 
+func (gc *groupCostController) logAuditLog(info string) {
+	if gc.lastRun.Add(*&logAuditRunInterval).After(time.Now()) {
+		LogAuditHook(LogHookHanle, info)
+	}
+}
+
 func (gc *groupCostController) onRequestWait(
 	ctx context.Context, info RequestInfo,
 ) (*rmpb.Consumption, *rmpb.Consumption, error) {
@@ -1027,6 +1041,7 @@ func (gc *groupCostController) onRequestWait(
 				if d, err = WaitReservations(ctx, now, res); err == nil {
 					break retryLoop
 				}
+				gc.logAuditLog(fmt.Sprintf("Resource %s usage has reached the limit", gc.Name))
 			case rmpb.GroupMode_RUMode:
 				res := make([]*Reservation, 0, len(requestUnitLimitTypeList))
 				for typ, counter := range gc.run.requestUnitTokens {
@@ -1037,6 +1052,7 @@ func (gc *groupCostController) onRequestWait(
 				if d, err = WaitReservations(ctx, now, res); err == nil {
 					break retryLoop
 				}
+				gc.logAuditLog(fmt.Sprintf("Resource %s usage has reached the limit", gc.Name))
 			}
 			gc.requestRetryCounter.Inc()
 			time.Sleep(retryInterval)
