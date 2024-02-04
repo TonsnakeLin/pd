@@ -1040,7 +1040,7 @@ func (gc *groupCostController) onRequestWait(
 				if d, err = WaitReservations(ctx, now, res); err == nil {
 					break retryLoop
 				}
-				gc.logAuditLog(fmt.Sprintf("Resource %s usage has reached the limit", gc.Name))
+
 			case rmpb.GroupMode_RUMode:
 				res := make([]*Reservation, 0, len(requestUnitLimitTypeList))
 				for typ, counter := range gc.run.requestUnitTokens {
@@ -1051,10 +1051,10 @@ func (gc *groupCostController) onRequestWait(
 				if d, err = WaitReservations(ctx, now, res); err == nil {
 					break retryLoop
 				}
-				gc.logAuditLog(fmt.Sprintf("Resource %s usage has reached the limit", gc.Name))
 			}
 			gc.requestRetryCounter.Inc()
 			time.Sleep(retryInterval)
+			gc.logAuditLog(fmt.Sprintf("Resource %s usage has reached the limit", gc.Name))
 		}
 		if err != nil {
 			gc.failedRequestCounter.Inc()
